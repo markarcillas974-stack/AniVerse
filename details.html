@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="AniVerse anime details page with watch links, episodes, scores, and official streaming options."
+    />
+    <title>AniVerse | Anime Details</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-page="details">
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a href="./index.html" class="brand" aria-label="AniVerse home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">AniVerse</span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="./index.html#top-anime">Top Anime</a>
+          <a href="./index.html#popular-anime">Popular</a>
+          <a href="./index.html#upcoming-anime">Upcoming</a>
+          <a href="./index.html#search-anime">Search</a>
+        </nav>
+        <div class="nav-actions">
+          <button id="backButton" class="nav-button secondary" type="button">Back</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="detail-page">
+      <div class="container">
+        <div id="detailError" class="api-message error hidden" role="alert"></div>
+        <div id="animeDetailCard" class="anime-detail-card"></div>
+
+        <section class="episode-section">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Episodes</p>
+              <h2>Episode List</h2>
+            </div>
+          </div>
+          <div id="episodeList" class="episode-list"></div>
+        </section>
+      </div>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
+
+
+
+
+
+
+

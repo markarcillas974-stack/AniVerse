@@ -1,614 +1,80 @@
-const JIKAN_BASE = "https://api.jikan.moe/v4";
-
-const state = {
-  searchTerm: "",
-  activeGenre: "All",
-  sortBy: "score",
-  favorites: readFavorites(),
-  allAnime: [],
-  featuredAnime: null,
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-  initializeTheme();
-  setupEventListeners();
-
-  if (document.getElementById("siteSearch")) {
-    loadHomepageData();
-  }
-
-  if (document.body.dataset.page === "watch") {
-    loadWatchPage();
-  }
-});
-
-function setupEventListeners() {
-  const searchInput = document.getElementById("siteSearch");
-  if (searchInput) {
-    searchInput.addEventListener("input", (event) => {
-      state.searchTerm = event.target.value.trim().toLowerCase();
-      renderAllSections();
-    });
-  }
-
-  const genreFilter = document.getElementById("genreFilter");
-  if (genreFilter) {
-    genreFilter.addEventListener("change", (event) => {
-      state.activeGenre = event.target.value;
-      renderAllSections();
-    });
-  }
-
-  const sortSelect = document.getElementById("sortSelect");
-  if (sortSelect) {
-    sortSelect.addEventListener("change", (event) => {
-      state.sortBy = event.target.value;
-      renderAllSections();
-    });
-  }
-
-  const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", toggleTheme);
-  }
-
-  const featuredDetailsBtn = document.getElementById("featuredDetails");
-  if (featuredDetailsBtn) {
-    featuredDetailsBtn.addEventListener("click", () => {
-      if (state.featuredAnime) {
-        openAnimeModal(state.featuredAnime.mal_id);
-      }
-    });
-  }
-
-  const featuredFavBtn = document.getElementById("featuredFav");
-  if (featuredFavBtn) {
-    featuredFavBtn.addEventListener("click", () => {
-      if (state.featuredAnime) {
-        toggleFavorite(state.featuredAnime);
-      }
-    });
-  }
-
-  const closeModalBtn = document.getElementById("closeModal");
-  if (closeModalBtn) {
-    closeModalBtn.addEventListener("click", closeAnimeModal);
-  }
-
-  const modalBackdrop = document.querySelector(".modal-backdrop");
-  if (modalBackdrop) {
-    modalBackdrop.addEventListener("click", closeAnimeModal);
-  }
-
-  document.addEventListener("click", (event) => {
-    const favoriteButton = event.target.closest(".favorite-toggle");
-    if (favoriteButton) {
-      event.stopPropagation();
-      const animeId = Number(favoriteButton.dataset.id);
-      const anime = findAnimeById(animeId);
-      if (anime) {
-        toggleFavorite(anime);
-      }
-      return;
-    }
-
-    const animeCard = event.target.closest(".anime-card");
-    if (animeCard) {
-      const animeId = Number(animeCard.dataset.id);
-      openAnimeModal(animeId);
-    }
-  });
-}
-
-async function loadHomepageData() {
-  showLoadingState(true);
-  hideErrorState();
-
-  try {
-    const requests = {
-      popular: fetchJikan(`${JIKAN_BASE}/anime?order_by=popularity&sort=desc&limit=12`),
-      top: fetchJikan(`${JIKAN_BASE}/top/anime?limit=12`),
-      upcoming: fetchJikan(`${JIKAN_BASE}/seasons/upcoming?limit=12`),
-      recent: fetchJikan(`${JIKAN_BASE}/anime?status=airing&order_by=score&sort=desc&limit=12`),
-    };
-
-    const results = await Promise.allSettled(Object.entries(requests).map(([key, promise]) => promise.then((data) => ({ key, data }))));
-
-    const sectionMap = {};
-    let hasError = false;
-
-    results.forEach((result) => {
-      if (result.status === "fulfilled") {
-        sectionMap[result.value.key] = result.value.data;
-      } else {
-        hasError = true;
-        console.error("Failed to fetch section data:", result.reason);
-      }
-    });
-
-    state.allAnime = [
-      ...(sectionMap.popular || []),
-      ...(sectionMap.top || []),
-      ...(sectionMap.upcoming || []),
-      ...(sectionMap.recent || []),
-    ];
-
-    state.featuredAnime =
-      (sectionMap.popular && sectionMap.popular[0]) ||
-      (sectionMap.top && sectionMap.top[0]) ||
-      (sectionMap.recent && sectionMap.recent[0]) ||
-      null;
-
-    if (!state.featuredAnime && !state.allAnime.length) {
-      throw new Error("No anime data available from the API right now.");
-    }
-
-    updateFeaturedBanner();
-    updateGenreFilter();
-    updateGenrePills();
-    renderAllSections();
-
-    if (hasError) {
-      showErrorState("Some anime sections could not load. Please refresh or try again later.");
-    }
-  } catch (error) {
-    console.error(error);
-    showErrorState("Unable to load anime data right now. Please check your internet connection or try again later.");
-  } finally {
-    showLoadingState(false);
-  }
-}
-
-function renderAllSections() {
-  const sectionConfigs = [
-    { key: "popular", containerId: "popularGrid", label: "Popular Anime" },
-    { key: "top", containerId: "topGrid", label: "Top Anime" },
-    { key: "upcoming", containerId: "upcomingGrid", label: "Upcoming Anime" },
-    { key: "recent", containerId: "recentGrid", label: "Recently Updated" },
-  ];
-
-  const dataMap = {
-    popular: getFilteredAnime(readSectionData("popular")),
-    top: getFilteredAnime(readSectionData("top")),
-    upcoming: getFilteredAnime(readSectionData("upcoming")),
-    recent: getFilteredAnime(readSectionData("recent")),
-  };
-
-  sectionConfigs.forEach(({ key, containerId }) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const list = dataMap[key];
-    container.innerHTML = list.length ? list.map(createAnimeCard).join("") : createEmptyState();
-  });
-
-  renderFavorites();
-}
-
-function readSectionData(key) {
-  const storage = JSON.parse(sessionStorage.getItem("aniverse-sections") || "{}");
-  if (storage[key] && Array.isArray(storage[key])) {
-    return storage[key];
-  }
-  return [];
-}
-
-function saveSectionData(key, data) {
-  const storage = JSON.parse(sessionStorage.getItem("aniverse-sections") || "{}");
-  storage[key] = data;
-  sessionStorage.setItem("aniverse-sections", JSON.stringify(storage));
-}
-
-function updateFeaturedBanner() {
-  const heroBackdrop = document.getElementById("heroBackdrop");
-  const titleEl = document.getElementById("featuredTitle");
-  const synopsisEl = document.getElementById("featuredSynopsis");
-  const genresEl = document.getElementById("featuredGenres");
-  const ratingEl = document.getElementById("featuredRating");
-
-  if (!state.featuredAnime) return;
-
-  const anime = state.featuredAnime;
-  const image = anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "";
-  if (heroBackdrop) {
-    heroBackdrop.style.backgroundImage = `url('${image}')`;
-  }
-
-  if (titleEl) titleEl.textContent = anime.title || "Featured Anime";
-  if (synopsisEl) {
-    const synopsis = anime.synopsis ? stripHtml(anime.synopsis).slice(0, 200) + "..." : "A must-watch anime experience waiting to be discovered.";
-    synopsisEl.textContent = synopsis;
-  }
-
-  if (genresEl) {
-    const genres = (anime.genres || []).slice(0, 3).map((genre) => genre.name).join(" • ");
-    genresEl.textContent = genres || "Action • Adventure";
-  }
-
-  if (ratingEl) {
-    ratingEl.textContent = `⭐ ${Number(anime.score || 0).toFixed(1)}`;
-  }
-
-  const featuredFavBtn = document.getElementById("featuredFav");
-  if (featuredFavBtn) {
-    const isSaved = state.favorites.some((item) => item.mal_id === anime.mal_id);
-    featuredFavBtn.textContent = isSaved ? "Saved to Favorites" : "Add to Favorites";
-  }
-}
-
-function updateGenreFilter() {
-  const genreFilter = document.getElementById("genreFilter");
-  if (!genreFilter) return;
-
-  const genres = getUniqueGenres();
-  const current = state.activeGenre;
-  const options = ["<option value='All'>All genres</option>"];
-
-  genres.forEach((genre) => {
-    const selected = genre === current ? "selected" : "";
-    options.push(`<option value="${genre}" ${selected}>${genre}</option>`);
-  });
-
-  genreFilter.innerHTML = options.join("");
-}
-
-function updateGenrePills() {
-  const genreList = document.getElementById("genreList");
-  if (!genreList) return;
-
-  const genres = getUniqueGenres();
-  const activeGenre = state.activeGenre;
-
-  genreList.innerHTML = genres
-    .map(
-      (genre) =>
-        `<button type="button" class="genre-pill ${genre === activeGenre ? "active" : ""}" data-genre="${genre}">${genre}</button>`
-    )
-    .join("");
-
-  genreList.querySelectorAll(".genre-pill").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeGenre = button.dataset.genre;
-      updateGenreFilter();
-      updateGenrePills();
-      renderAllSections();
-    });
-  });
-}
-
-function getUniqueGenres() {
-  const genres = new Set();
-  state.allAnime.forEach((anime) => {
-    (anime.genres || []).forEach((genre) => genres.add(genre.name));
-  });
-  return Array.from(genres).sort();
-}
-
-function getFilteredAnime(list) {
-  let filtered = [...list];
-
-  if (state.searchTerm) {
-    filtered = filtered.filter((anime) =>
-      (anime.title || "").toLowerCase().includes(state.searchTerm)
-    );
-  }
-
-  if (state.activeGenre !== "All") {
-    filtered = filtered.filter((anime) =>
-      (anime.genres || []).some((genre) => genre.name === state.activeGenre)
-    );
-  }
-
-  filtered.sort((a, b) => {
-    switch (state.sortBy) {
-      case "title":
-        return (a.title || "").localeCompare(b.title || "");
-      case "episodes":
-        return Number(b.episodes || 0) - Number(a.episodes || 0);
-      case "favorites":
-        return Number(b.favorites || 0) - Number(a.favorites || 0);
-      case "score":
-      default:
-        return Number(b.score || 0) - Number(a.score || 0);
-    }
-  });
-
-  return filtered.slice(0, 12);
-}
-
-function createAnimeCard(anime) {
-  const image = anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "";
-  const year = anime.year || anime.aired?.prop?.from?.year || "N/A";
-  const episodes = anime.episodes ? `${anime.episodes} eps` : "TBA";
-  const score = Number(anime.score || 0).toFixed(1);
-  const isFavorite = state.favorites.some((item) => item.mal_id === anime.mal_id);
-
-  return `
-    <article class="anime-card" data-id="${anime.mal_id}" tabindex="0" aria-label="${anime.title}">
-      <button class="favorite-toggle ${isFavorite ? "active" : ""}" data-id="${anime.mal_id}" type="button" aria-label="Toggle favorite">
-        ${isFavorite ? "♥" : "♡"}
-      </button>
-      <img class="card-poster" src="${image}" alt="${anime.title}" loading="lazy" />
-      <div class="card-body">
-        <div class="card-head">
-          <h3 class="card-title">${anime.title}</h3>
-          <span class="card-score">⭐ ${score}</span>
-        </div>
-        <div class="card-meta">
-          <span>${episodes}</span>
-          <span>${year}</span>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function createEmptyState() {
-  return `
-    <div class="empty-state">
-      <p>No anime match your current filters. Try a different genre or search term.</p>
-    </div>
-  `;
-}
-
-function renderFavorites() {
-  const favoritesGrid = document.getElementById("favoritesGrid");
-  if (!favoritesGrid) return;
-
-  if (!state.favorites.length) {
-    favoritesGrid.innerHTML = `
-      <div class="empty-state">
-        <p>No favorites saved yet. Tap the heart on any anime card to keep your picks here.</p>
-      </div>
-    `;
-    return;
-  }
-
-  favoritesGrid.innerHTML = state.favorites.map(createAnimeCard).join("");
-}
-
-function toggleFavorite(anime) {
-  const existingIndex = state.favorites.findIndex((item) => item.mal_id === anime.mal_id);
-
-  if (existingIndex >= 0) {
-    state.favorites.splice(existingIndex, 1);
-  } else {
-    state.favorites.push({
-      mal_id: anime.mal_id,
-      title: anime.title,
-      score: anime.score,
-      episodes: anime.episodes,
-      year: anime.year || anime.aired?.prop?.from?.year || "N/A",
-      images: anime.images,
-      genres: anime.genres,
-      url: anime.url,
-    });
-  }
-
-  localStorage.setItem("aniverse-favorites", JSON.stringify(state.favorites));
-
-  updateFeaturedBanner();
-  renderAllSections();
-}
-
-function readFavorites() {
-  try {
-    return JSON.parse(localStorage.getItem("aniverse-favorites") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function findAnimeById(id) {
-  const all = [...state.allAnime, ...state.favorites];
-  return all.find((anime) => Number(anime.mal_id) === Number(id)) || null;
-}
-
-function openAnimeModal(id) {
-  const anime = findAnimeById(id);
-  if (!anime) return;
-
-  const modal = document.getElementById("animeModal");
-  if (!modal) return;
-
-  const details = anime.details || null;
-  const finalAnime = details || anime;
-
-  const poster = finalAnime.images?.jpg?.large_image_url || finalAnime.images?.jpg?.image_url || "";
-  document.getElementById("modalPoster").src = poster;
-  document.getElementById("modalTitle").textContent = finalAnime.title || "Anime";
-  document.getElementById("modalRating").textContent = `⭐ ${Number(finalAnime.score || 0).toFixed(1)}`;
-  document.getElementById("modalEpisodes").textContent = finalAnime.episodes ? `${finalAnime.episodes} episodes` : "TBA";
-  document.getElementById("modalYear").textContent = finalAnime.year || finalAnime.aired?.prop?.from?.year || "N/A";
-
-  const genreContainer = document.getElementById("modalGenres");
-  genreContainer.innerHTML = (finalAnime.genres || []).slice(0, 6).map((genre) => `<span class="genre-badge">${genre.name}</span>`).join("");
-
-  const synopsis = finalAnime.synopsis ? stripHtml(finalAnime.synopsis) : "No synopsis is available for this anime right now.";
-  document.getElementById("modalSynopsis").textContent = synopsis;
-
-  const watchLink = document.getElementById("watchButton");
-  watchLink.href = `watch.html?id=${finalAnime.mal_id}`;
-
-  const officialLink = document.getElementById("officialButton");
-  officialLink.href = finalAnime.url || `https://myanimelist.net/anime/${finalAnime.mal_id}`;
-
-  modal.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-}
-
-function closeAnimeModal() {
-  const modal = document.getElementById("animeModal");
-  if (modal) {
-    modal.classList.add("hidden");
-  }
-  document.body.style.overflow = "";
-}
-
-async function fetchAnimeById(id) {
-  const response = await fetch(`${JIKAN_BASE}/anime/${id}/full`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch anime data for ID ${id}`);
-  }
-  const payload = await response.json();
-  return payload.data;
-}
-
-async function fetchJikan(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Jikan API error: ${response.status}`);
-  }
-
-  const payload = await response.json();
-  return Array.isArray(payload.data) ? payload.data : [];
-}
-
-function showLoadingState(isVisible) {
-  const loadingState = document.getElementById("loadingState");
-  if (loadingState) {
-    loadingState.classList.toggle("hidden", !isVisible);
-  }
-}
-
-function showErrorState(message) {
-  const errorState = document.getElementById("errorState");
-  if (errorState) {
-    errorState.textContent = message;
-    errorState.classList.remove("hidden");
-  }
-}
-
-function hideErrorState() {
-  const errorState = document.getElementById("errorState");
-  if (errorState) {
-    errorState.classList.add("hidden");
-  }
-}
-
-function stripHtml(text) {
-  return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function initializeTheme() {
-  const savedTheme = localStorage.getItem("aniverse-theme") || "dark";
-  const isLight = savedTheme === "light";
-  document.body.classList.toggle("light-mode", isLight);
-
-  const toggle = document.getElementById("themeToggle");
-  if (toggle) {
-    toggle.textContent = isLight ? "🌙" : "☀️";
-  }
-}
-
-function toggleTheme() {
-  const isLight = document.body.classList.toggle("light-mode");
-  localStorage.setItem("aniverse-theme", isLight ? "light" : "dark");
-
-  const toggle = document.getElementById("themeToggle");
-  if (toggle) {
-    toggle.textContent = isLight ? "🌙" : "☀️";
-  }
-}
-
-async function loadWatchPage() {
-  const params = new URLSearchParams(window.location.search);
-  const animeId = Number(params.get("id"));
-
-  if (!animeId) {
-    showWatchError("No anime was selected. Go back to the homepage and choose a title.");
-    return;
-  }
-
-  try {
-    const anime = await fetchAnimeById(animeId);
-    renderWatchPage(anime);
-
-    const episodeData = await fetchJikan(`${JIKAN_BASE}/anime/${animeId}/episodes?page=1&limit=10`);
-    renderEpisodeList(episodeData);
-  } catch (error) {
-    console.error(error);
-    showWatchError("This anime could not be loaded. Try another title from AniVerse.");
-  }
-}
-
-function renderWatchPage(anime) {
-  document.title = `${anime.title} | AniVerse Watch`;
-
-  const poster = anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || "";
-  const titleEl = document.getElementById("watchTitle");
-  const posterEl = document.getElementById("watchPoster");
-  const watchSummary = document.getElementById("watchSummary");
-  const watchMeta = document.getElementById("watchMeta");
-
-  if (titleEl) titleEl.textContent = anime.title || "Anime";
-  if (posterEl) posterEl.src = poster;
-  if (watchSummary) {
-    watchSummary.textContent = stripHtml(anime.synopsis || "No synopsis available.");
-  }
-
-  if (watchMeta) {
-    const metaItems = [
-      `⭐ ${Number(anime.score || 0).toFixed(1)}`,
-      `${anime.episodes || "TBA"} episodes`,
-      anime.year || anime.aired?.prop?.from?.year || "N/A",
-    ];
-    watchMeta.innerHTML = metaItems.map((item) => `<span class="meta-tag">${item}</span>`).join("");
-  }
-
-  const officialLink = document.getElementById("watchOfficialButton");
-  if (officialLink) {
-    officialLink.href = anime.url || `https://myanimelist.net/anime/${anime.mal_id}`;
-  }
-
-  const playerWindow = document.getElementById("playerWindow");
-  if (playerWindow) {
-    playerWindow.innerHTML = `
-      <div class="player-message">
-        <h3>Authorized streaming source unavailable</h3>
-        <p>
-          AniVerse is ready for a licensed video source, but no authorized stream is currently available for this title.
-          Please watch it through an official platform instead.
-        </p>
-        <a class="primary-btn" href="${anime.url || `https://myanimelist.net/anime/${anime.mal_id}`}" target="_blank" rel="noreferrer">
-          Open Official Page
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="AniVerse watch page. View official streaming options and episode choices for your selected anime."
+    />
+    <title>AniVerse | Watch Anime</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-page="watch">
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a href="./index.html" class="brand" aria-label="AniVerse home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">AniVerse</span>
         </a>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="./index.html#top-anime">Top Anime</a>
+          <a href="./index.html#popular-anime">Popular</a>
+          <a href="./index.html#upcoming-anime">Upcoming</a>
+          <a href="./index.html#search-anime">Search</a>
+        </nav>
+        <div class="nav-actions">
+          <button id="watchBackButton" class="nav-button secondary" type="button">Back</button>
+        </div>
       </div>
-    `;
-  }
-}
+    </header>
 
-function renderEpisodeList(episodes) {
-  const container = document.getElementById("episodeList");
-  if (!container) return;
+    <main class="watch-page">
+      <div class="container">
+        <div id="watchError" class="api-message error hidden" role="alert"></div>
 
-  if (!episodes.length) {
-    container.innerHTML = `<div class="empty-state"><p>No episode list is available yet for this anime.</p></div>`;
-    return;
-  }
+        <section class="watch-shell">
+          <div class="watch-player-panel">
+            <div id="watchPlayer" class="watch-player">
+              <div class="watch-placeholder">
+                <div class="placeholder-icon">▶</div>
+                <h2>Official streaming source required</h2>
+                <p>
+                  The Jikan API does not provide direct episode video streams. To watch legally,
+                  use the official provider links below or visit an authorized service.
+                </p>
+              </div>
+            </div>
 
-  container.innerHTML = episodes
-    .slice(0, 10)
-    .map(
-      (episode, index) => `
-        <button class="episode-item" type="button" aria-label="Episode ${episode.mal_id || index + 1}">
-          <strong>Episode ${episode.mal_id || index + 1}</strong>
-          <span>${episode.title || "Official episode"}</span>
-        </button>
-      `
-    )
-    .join("");
-}
+            <div id="providerList" class="provider-list"></div>
+          </div>
 
-function showWatchError(message) {
-  const playerWindow = document.getElementById("playerWindow");
-  if (playerWindow) {
-    playerWindow.innerHTML = `
-      <div class="player-message">
-        <h3>Unable to load this title</h3>
-        <p>${message}</p>
-        <a class="primary-btn" href="index.html">Back to Home</a>
+          <aside class="watch-sidebar">
+            <div id="watchAnimeMeta" class="watch-meta"></div>
+            <div class="episode-selector-block">
+              <div class="section-heading inline-heading small-gap">
+                <div>
+                  <p class="eyebrow">Select Episode</p>
+                  <h3>Episodes</h3>
+                </div>
+              </div>
+              <div id="watchEpisodeList" class="watch-episode-list"></div>
+            </div>
+          </aside>
+        </section>
       </div>
-    `;
-  }
-}
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
+
+
+
+

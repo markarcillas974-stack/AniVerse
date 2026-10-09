@@ -2,236 +2,216 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="AniVerse is a modern anime streaming website powered by Jikan API data. Browse popular, upcoming, and top anime series."
+      content="AniVerse is a modern anime streaming website powered by the Jikan API v4. Discover top anime, seasonal releases, upcoming titles, and detailed information from MyAnimeList."
     />
-    <title>AniVerse | Anime Streaming</title>
+    <title>AniVerse | Watch Anime Online</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="./style.css" />
   </head>
-  <body>
-    <div class="page-shell">
-      <header class="topbar">
-        <nav class="nav container" aria-label="Main navigation">
-          <a href="index.html" class="logo" aria-label="AniVerse home">
-            <span class="logo-mark">A</span>
-            AniVerse
-          </a>
+  <body data-page="home">
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a href="./index.html" class="brand" aria-label="AniVerse home">
+          <span class="brand-mark">A</span>
+          <span class="brand-text">AniVerse</span>
+        </a>
 
-          <div class="nav-links">
-            <a href="#home">Home</a>
-            <a href="#popular">Popular</a>
-            <a href="#upcoming">Upcoming</a>
-            <a href="#genres">Genres</a>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="#top-anime">Top Anime</a>
+          <a href="#popular-anime">Popular</a>
+          <a href="#upcoming-anime">Upcoming</a>
+          <a href="#search-anime">Search</a>
+          <a href="#favorites-section">Favorites</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="#search-anime" class="nav-button secondary">Browse</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-section">
+        <div class="container hero-banner" id="featuredBanner" aria-live="polite">
+          <div class="hero-overlay"></div>
+          <div class="hero-content">
+            <p class="eyebrow">Featured Anime</p>
+            <h1 id="featuredTitle">Loading featured anime...</h1>
+            <p id="featuredSynopsis" class="hero-synopsis">Fetching latest anime data...</p>
+            <div class="hero-meta" id="featuredMeta">
+              <span>⭐ 0.0</span>
+              <span>Episodes: 0</span>
+              <span>Genre: Loading</span>
+            </div>
+            <div class="hero-actions">
+              <a id="featuredDetailsLink" href="./details.html?id=0" class="primary-btn">View Details</a>
+              <button id="featuredFavoriteBtn" class="ghost-btn" type="button">Add to Favorites</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="search-section" id="search-anime">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Discover</p>
+              <h2>Search Anime</h2>
+            </div>
           </div>
 
-          <div class="nav-actions">
-            <label class="search-wrap" aria-label="Search anime">
+          <div class="search-panel">
+            <label class="search-box" for="animeSearchInput">
               <span class="search-icon">⌕</span>
               <input
-                id="siteSearch"
+                id="animeSearchInput"
                 type="search"
-                placeholder="Search anime..."
-                aria-label="Search anime titles"
+                placeholder="Search anime by title..."
+                aria-label="Search anime"
               />
             </label>
-            <button
-              id="themeToggle"
-              class="theme-toggle"
-              type="button"
-              aria-label="Toggle light and dark theme"
-            >
-              ☀️
-            </button>
+            <div id="genreFilters" class="genre-filters" aria-label="Genre filters"></div>
           </div>
-        </nav>
-      </header>
 
-      <main id="home">
-        <section class="hero" aria-labelledby="featuredTitle">
-          <div class="hero-backdrop" id="heroBackdrop"></div>
-          <div class="hero-overlay"></div>
-
-          <div class="container hero-content">
-            <div class="hero-copy">
-              <p class="eyebrow">Trending now</p>
-              <h1 id="featuredTitle">Loading featured anime...</h1>
-              <p id="featuredSynopsis" class="hero-description">
-                Loading description...
-              </p>
-
-              <div class="hero-meta">
-                <span id="featuredGenres" class="genre-badges">Action • Adventure</span>
-                <span id="featuredRating" class="rating-badge">⭐ 0.0</span>
-              </div>
-
-              <div class="hero-actions">
-                <button id="featuredDetails" class="primary-btn" type="button">
-                  View Details
-                </button>
-                <button id="featuredFav" class="secondary-btn" type="button">
-                  Add to Favorites
-                </button>
-              </div>
+          <div id="searchResultsSection" class="content-section">
+            <div class="section-heading inline-heading">
+              <h3>Search Results</h3>
+              <span id="searchStatus" class="section-status">Type a title to search</span>
             </div>
-          </div>
-        </section>
-
-        <section class="filter-panel container" aria-label="Anime filters">
-          <div class="controls">
-            <div class="select-wrap">
-              <label for="genreFilter">Genre</label>
-              <select id="genreFilter" aria-label="Filter by genre">
-                <option value="All">All genres</option>
-              </select>
-            </div>
-
-            <div class="select-wrap">
-              <label for="sortSelect">Sort by</label>
-              <select id="sortSelect" aria-label="Sort anime list">
-                <option value="score">Rating</option>
-                <option value="title">Title</option>
-                <option value="episodes">Episodes</option>
-                <option value="favorites">Favorites</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <section class="content-block container" id="popular" aria-labelledby="popularHeading">
-          <div class="section-header">
-            <h2 id="popularHeading">Popular Anime</h2>
-          </div>
-          <div id="popularGrid" class="anime-grid"></div>
-        </section>
-
-        <section class="content-block container" id="top" aria-labelledby="topHeading">
-          <div class="section-header">
-            <h2 id="topHeading">Top Anime</h2>
-          </div>
-          <div id="topGrid" class="anime-grid"></div>
-        </section>
-
-        <section class="content-block container" id="upcoming" aria-labelledby="upcomingHeading">
-          <div class="section-header">
-            <h2 id="upcomingHeading">Upcoming Anime</h2>
-          </div>
-          <div id="upcomingGrid" class="anime-grid"></div>
-        </section>
-
-        <section class="content-block container" id="recent" aria-labelledby="recentHeading">
-          <div class="section-header">
-            <h2 id="recentHeading">Recently Updated</h2>
-          </div>
-          <div id="recentGrid" class="anime-grid"></div>
-        </section>
-
-        <section class="content-block container" id="genres" aria-labelledby="genreHeading">
-          <div class="section-header">
-            <h2 id="genreHeading">Browse by Genre</h2>
-          </div>
-          <div id="genreList" class="genre-list" aria-label="Anime genres"></div>
-        </section>
-
-        <section class="content-block container" id="favorites" aria-labelledby="favoritesHeading">
-          <div class="section-header">
-            <h2 id="favoritesHeading">My Favorites</h2>
-          </div>
-          <div id="favoritesGrid" class="anime-grid favorites-grid"></div>
-        </section>
-      </main>
-
-      <div id="loadingState" class="loading-state hidden" role="status" aria-live="polite">
-        Loading anime catalog...
-      </div>
-
-      <div id="errorState" class="error-state hidden" role="alert" aria-live="assertive"></div>
-
-      <footer class="site-footer">
-        <div class="container footer-grid">
-          <div>
-            <a href="index.html" class="logo footer-logo">
-              <span class="logo-mark">A</span>
-              AniVerse
-            </a>
-            <p>
-              Discover your next obsession with anime, rankings, favorites, and curated
-              recommendations.
-            </p>
-          </div>
-
-          <div>
-            <h3>Explore</h3>
-            <ul>
-              <li><a href="#popular">Popular</a></li>
-              <li><a href="#upcoming">Upcoming</a></li>
-              <li><a href="#genres">Genres</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Company</h3>
-            <ul>
-              <li><a href="#home">About</a></li>
-              <li><a href="#home">Contact</a></li>
-              <li><a href="#home">Support</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Credits</h3>
-            <ul>
-              <li><a href="https://jikan.moe/" target="_blank" rel="noreferrer">Jikan API</a></li>
-              <li><a href="https://myanimelist.net/" target="_blank" rel="noreferrer">MyAnimeList</a></li>
-            </ul>
+            <div id="searchResultsGrid" class="anime-grid"></div>
           </div>
         </div>
-      </footer>
-    </div>
+      </section>
 
-    <aside id="animeModal" class="modal hidden" aria-modal="true" role="dialog" aria-labelledby="modalTitle">
-      <div class="modal-backdrop" data-close="true"></div>
-      <div class="modal-panel">
-        <button id="closeModal" class="close-btn" type="button" aria-label="Close anime details">
-          ✕
-        </button>
-
-        <div class="modal-content">
-          <img id="modalPoster" class="modal-poster" src="" alt="Anime poster" />
-
-          <div class="modal-info">
-            <p class="modal-label">Featured anime</p>
-            <h2 id="modalTitle">Anime title</h2>
-
-            <div class="modal-meta-row">
-              <span id="modalRating" class="rating-badge">⭐ 0.0</span>
-              <span id="modalEpisodes">0 episodes</span>
-              <span id="modalYear">2024</span>
+      <section class="content-section" id="top-anime">
+        <div class="container">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Curated List</p>
+              <h2>Top Anime</h2>
             </div>
+            <button id="topAnimeLoadMore" class="secondary-btn" type="button">Load More</button>
+          </div>
+          <div id="topAnimeGrid" class="anime-grid"></div>
+        </div>
+      </section>
 
-            <div id="modalGenres" class="genre-badges"></div>
-
-            <p id="modalSynopsis" class="modal-synopsis"></p>
-
-            <div class="modal-actions">
-              <a id="watchButton" class="primary-btn" href="watch.html">Watch Anime</a>
-              <a id="officialButton" class="secondary-btn" href="#" target="_blank" rel="noreferrer">
-                Official Page
-              </a>
+      <section class="content-section" id="popular-anime">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Most Watched</p>
+              <h2>Popular Anime</h2>
             </div>
           </div>
+          <div id="popularAnimeGrid" class="anime-grid"></div>
         </div>
-      </div>
-    </aside>
+      </section>
 
-    <script src="script.js"></script>
+      <section class="content-section" id="upcoming-anime">
+        <div class="container">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Coming Soon</p>
+              <h2>Upcoming Anime</h2>
+            </div>
+            <button id="upcomingAnimeLoadMore" class="secondary-btn" type="button">Load More</button>
+          </div>
+          <div id="upcomingAnimeGrid" class="anime-grid"></div>
+        </div>
+      </section>
+
+      <section class="content-section" id="favorites-section">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your List</p>
+              <h2>Favorite Anime</h2>
+            </div>
+          </div>
+          <div id="favoritesGrid" class="anime-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <template id="animeCardTemplate">
+      <article class="anime-card" tabindex="0">
+        <button class="favorite-btn" type="button" aria-label="Add to favorites">♡</button>
+        <div class="anime-poster-wrap">
+          <img class="anime-poster" alt="Anime poster" loading="lazy" />
+        </div>
+        <div class="anime-info">
+          <div class="anime-header-row">
+            <h3 class="anime-title"></h3>
+          </div>
+          <div class="anime-metrics">
+            <span class="anime-score"></span>
+            <span class="anime-episodes"></span>
+          </div>
+          <p class="anime-synopsis"></p>
+          <div class="anime-tags"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./script.js"></script>
   </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
