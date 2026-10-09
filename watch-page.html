@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AniVerse | Watch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="watch">
+    <div class="page-shell">
+      <header class="topbar">
+        <nav class="nav container" aria-label="Main navigation">
+          <a href="index.html" class="logo" aria-label="AniVerse home">
+            <span class="logo-mark">A</span>
+            AniVerse
+          </a>
+
+          <div class="nav-links">
+            <a href="index.html#home">Home</a>
+            <a href="index.html#popular">Popular</a>
+            <a href="index.html#upcoming">Upcoming</a>
+            <a href="index.html#genres">Genres</a>
+          </div>
+
+          <div class="nav-actions">
+            <a href="index.html" class="secondary-btn">Back to Home</a>
+            <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light and dark theme">
+              ☀️
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      <main class="watch-page container">
+        <div class="watch-layout">
+          <section class="player-panel" aria-live="polite">
+            <div class="watch-header">
+              <h1 id="watchTitle">Loading anime...</h1>
+            </div>
+
+            <div id="playerWindow" class="player-window"></div>
+          </section>
+
+          <aside class="details-panel">
+            <div class="watch-card">
+              <img id="watchPoster" class="watch-poster" src="" alt="Anime poster" />
+
+              <div class="watch-info">
+                <div id="watchMeta" class="hero-meta"></div>
+                <p id="watchSummary" class="modal-synopsis"></p>
+                <div class="hero-actions">
+                  <a id="watchOfficialButton" class="primary-btn" href="#" target="_blank" rel="noreferrer">Official Page</a>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <section class="episode-panel" style="margin-top: 28px;">
+          <div class="watch-header">
+            <h2>Episode List</h2>
+          </div>
+          <div id="episodeList" class="episode-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
